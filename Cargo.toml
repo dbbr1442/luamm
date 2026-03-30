@@ -1,0 +1,8 @@
+[package]
+name = "luamm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+lli = { git = "https://github.com/dbbr1442/lli.git" }
+mlua = { version = "0.11.6", features = ["luau"] }
