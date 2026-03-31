@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 lli = { git = "https://github.com/dbbr1442/lli.git" }
+macroquad = "0.4.14"
 mlua = { version = "0.11.6", features = ["luau"] }
