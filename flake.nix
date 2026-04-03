@@ -10,8 +10,9 @@
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
 
-    nativeBuildInputs = with pkgs; [ rustup lua-language-server ];
-    buildInputs = with pkgs; [ pkg-config alsa-lib xorg.libX11 xorg.libXi libxkbcommon libGL ]; 
+    nativeBuildInputs = with pkgs; [ rustup luau-lsp ];
+    #buildInputs = with pkgs; [ pkg-config alsa-lib xorg.libX11 xorg.libXi libxkbcommon libGL ]; 
+    buildInputs = with pkgs; [ pkg-config alsa-lib libX11 libXi libxkbcommon libGL ]; 
     
     cargoTOML = builtins.fromTOML (builtins.readFile ./Cargo.toml);
     pname = cargoTOML.package.name;
