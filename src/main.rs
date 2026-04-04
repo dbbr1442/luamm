@@ -28,13 +28,18 @@ async fn main() {
     let chunk = lua.load(source);
     chunk.exec().unwrap_or_disp();
 
+    match lua.globals().get::<LuaFunction>("start") {
+        Err(_) => (),
+        Ok(val) => val.call::<()>(()).disp_err(),
+    }
+
     let process: LuaFunction = lua.globals().get("process").unwrap();
-    let start: LuaFunction = lua.globals().get("start").unwrap();
-
-    start.call::<()>(()).disp_err();
-
     loop {
         process.call::<()>(()).disp_err();
+        if luamm::PROGRAM_SHOULD_EXIT.load(std::sync::atomic::Ordering::Relaxed) {
+            break;
+        }
+
         next_frame().await
     }
 }
