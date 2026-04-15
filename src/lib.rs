@@ -1,86 +1,60 @@
 use std::{ops::Deref, sync::atomic::AtomicBool, time::Duration};
 
 use lli::Library;
-use macroquad::{input::{get_keys_down, KeyCode}, miniquad::window::screen_size, shapes::draw_rectangle, window::clear_background};
+use macroquad::{input::{KeyCode, get_keys_down}, miniquad::window::screen_size, shapes::draw_rectangle, text::{draw_text, get_text_center}, window::clear_background};
 use mlua::prelude::*;
 
+use crate::{key::MqKey, rect::{Edge, Rect}};
+
+use crate::{color::Color, key::Key, vec2::Vec2};
+
+//mod uuid;
+mod vec2;
+mod color;
+mod key;
+mod rect;
+mod userdata;
+
 type MqColor = macroquad::color::Color;
-
-#[derive(Clone)]
-struct Vec2 {
-    pub x: f32,
-    pub y: f32,
-}
-
-impl Default for Vec2 {
-    fn default() -> Self {
-        Self {
-            x: 0.0,
-            y: 0.0,
-        }
-    }
-}
-
-impl LuaUserData for Vec2 {
-    fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("x", |_, this| Ok(this.x));
-        fields.add_field_method_get("y", |_, this| Ok(this.y));
-
-        fields.add_field_method_set("x", |_, this, val| { this.x = val; Ok(()) });
-        fields.add_field_method_set("y", |_, this, val| { this.y = val; Ok(()) });
-    }
-
-    fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-        methods.add_function("new", |_, (x, y)| Ok(Self { x, y }));
-
-        methods.add_meta_function_mut("__add", |_, args: (LuaUserDataRef<Vec2>, LuaUserDataRef<Vec2>)| {
-            let mut vec = args.0.clone();
-            vec.x += args.1.x;
-            vec.y += args.1.y;
-            Ok(vec)
-        });
-
-        methods.add_meta_function_mut("__mul", |_, args: (LuaUserDataRef<Vec2>, LuaNumber)| {
-            let num = args.1 as f32; 
-
-            let mut vec = args.0.clone();
-            vec.x *= num;
-            vec.y *= num;
-            Ok(vec)
-        });
-    }
-}
-
-struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-    pub a: u8,
-}
-
-impl LuaUserData for Color {
-    fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("r", |_, this| Ok(this.r));
-        fields.add_field_method_get("g", |_, this| Ok(this.g));
-        fields.add_field_method_get("b", |_, this| Ok(this.b));
-
-        fields.add_field_method_set("r", |_, this, val| { this.r = val; Ok(()) });
-        fields.add_field_method_set("g", |_, this, val| { this.g = val; Ok(()) });
-        fields.add_field_method_set("b", |_, this, val| { this.b = val; Ok(()) });
-    }
-
-    fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-        methods.add_function("new", |_, (r, g, b)| Ok(Self { r, g, b, a: 255 }));
-    }
-}
-
-impl Default for Color {
-    fn default() -> Self {
-        Self { r: 0, g: 0, b: 0, a: 255 }
-    }
-}
-
 type LRes = mlua::Result<()>;
+
+pub trait MqFrom<T> {
+    fn mq_from(val: T) -> Self;
+}
+
+pub trait IntoMq<T> {
+    fn into_mq(self) -> T;
+}
+
+impl<T, I> IntoMq<I> for T 
+where 
+    I: MqFrom<T>
+{
+    fn into_mq(self) -> I {
+        I::mq_from(self)
+    }
+}
+
+pub trait TryMqFrom<T, E = ()> 
+where 
+    Self: Sized
+{
+    fn try_mq_from(val: T) -> Result<Self, E>;
+}
+
+pub trait TryIntoMq<T, E = ()> {
+    fn try_into_mq(self) -> Result<T, E>;
+}
+
+impl<T, E, I> TryIntoMq<I, E> for T
+where 
+    I: TryMqFrom<T, E>,
+{
+    fn try_into_mq(self) -> Result<I, E> {
+        I::try_mq_from(self)
+    }
+}
+
 
 fn sleep(_lua: &Lua, secs: f64) -> LRes {
     std::thread::sleep(Duration::from_secs_f64(secs));
@@ -93,117 +67,18 @@ fn clear_screen(_lua: &Lua, color: LuaUserDataRef<Color>) -> LRes {
     Ok(())
 }
 
-pub enum Key {
-    W,
-    A,
-    S,
-    D,
-
-    Up,
-    Left,
-    Down,
-    Right,
-
-    Q,
-    E,
-    Esc,
-
-    Enter,
-}
-
-impl Default for Key {
-    fn default() -> Self {
-        Self::W
-    }
-}
-
-impl Key {
-    fn as_string(&self) -> String {
-        match self {
-            Self::W => "w",
-            Self::A => "a",
-            Self::S => "s",
-            Self::D => "d",
-            Self::Up => "up",
-            Self::Left => "left",
-            Self::Right => "right",
-            Self::Down => "down",
-            Self::Q => "q",
-            Self::E => "e",
-            Self::Esc => "esc",
-            Self::Enter => "enter",
-        }.to_string()
-    }
-
-    fn from_string(string: &str) -> Option<Self> {
-        let res = match string {
-            "w"     => Self::W,
-            "a"     => Self::A,
-            "s"     => Self::S,
-            "d"     => Self::D,
-            "up"    => Self::Up,
-            "left"  => Self::Left,
-            "right" => Self::Right,
-            "down"  => Self::Down,
-            "q"     => Self::Q,
-            "e"     => Self::E,
-            "esc"   => Self::Esc,
-            "enter" => Self::Enter,
-            _ => return None,
-        };
-
-        Some(res)
-    }
-}
-
-
-type MqKey = macroquad::input::KeyCode;
-
-impl Into<MqKey> for &Key {
-    fn into(self) -> MqKey {
-        match self {
-            Key::W     => MqKey::W, 
-            Key::A     => MqKey::C, 
-            Key::S     => MqKey::S, 
-            Key::D     => MqKey::D, 
-            Key::Up    => MqKey::Up, 
-            Key::Left  => MqKey::Left, 
-            Key::Right => MqKey::Right, 
-            Key::Down  => MqKey::Down, 
-            Key::Q     => MqKey::Q, 
-            Key::E     => MqKey::E, 
-            Key::Esc   => MqKey::Escape, 
-            Key::Enter => MqKey::Enter, 
-        }
-    }
-}
-
-impl LuaUserData for Key {
-    fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("key", |_, this| Ok(this.as_string()));
-    }
-
-    fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-        methods.add_function("new", |_, key: String| {
-            match Key::from_string(&key) {
-                Some(val) => Ok(val),
-                None => Err(LuaError::RuntimeError("Key did not match a known key".to_string())),
-            }
-        });
-    }
-}
 
 fn rect(_lua: &Lua, args: (LuaUserDataRef<Vec2>, LuaUserDataRef<Vec2>, LuaUserDataRef<Color>)) -> LRes {
     let color = args.2;
     let color = MqColor::from_rgba(color.r, color.g, color.b, color.a);
     let position = args.0;
     let size = args.1;
-    draw_rectangle(position.x, position.y, size.x, size.y, color);
+    draw_rectangle(position.x as f32, position.y as f32, size.x as f32, size.y as f32, color);
     Ok(())
 }
 
 fn is_key_down(_lua: &Lua, key: LuaUserDataRef<Key>) -> LuaResult<bool> {
-    let mq_key: KeyCode = key.deref().into();
+    let mq_key: KeyCode = key.deref().into_mq();
     for key in get_keys_down() {
         if mq_key == key {
             return Ok(true);
@@ -214,14 +89,30 @@ fn is_key_down(_lua: &Lua, key: LuaUserDataRef<Key>) -> LuaResult<bool> {
 }
 
 fn get_wasd_as_vec(_lua: &Lua, _args: ()) -> LuaResult<Vec2> {
-    let mut vec = Vec2 { x: 0.0, y: 0.0 };
+    let mut vec = Vec2::ZERO;
     
     for key in get_keys_down() {
         match key {
-            MqKey::W => vec.y -= 1.0,
-            MqKey::A => vec.x -= 1.0,
-            MqKey::S => vec.y += 1.0,
-            MqKey::D => vec.x += 1.0,
+            MqKey::W => vec += Vec2::UP,
+            MqKey::A => vec += Vec2::LEFT,
+            MqKey::S => vec += Vec2::DOWN,
+            MqKey::D => vec += Vec2::RIGHT,
+            _ => (),
+        };
+    }
+
+    Ok(vec)
+}
+
+fn get_arrow_as_vec(_lua: &Lua, _args: ()) -> LuaResult<Vec2> {
+    let mut vec = Vec2::ZERO;
+    
+    for key in get_keys_down() {
+        match key {
+            MqKey::Up => vec += Vec2::UP,
+            MqKey::Down => vec += Vec2::DOWN,
+            MqKey::Left => vec += Vec2::LEFT,
+            MqKey::Right => vec += Vec2::RIGHT,
             _ => (),
         };
     }
@@ -231,11 +122,7 @@ fn get_wasd_as_vec(_lua: &Lua, _args: ()) -> LuaResult<Vec2> {
 
 fn get_screen(_lua: &Lua, _args: ()) -> LuaResult<Vec2> {
     let vec = screen_size();
-    Ok(Vec2 { x: vec.0, y: vec.1 })
-}
-
-pub struct Signals {
-    close: bool,
+    Ok(Vec2 { x: vec.0 as f64, y: vec.1 as f64 })
 }
 
 pub static PROGRAM_SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
@@ -245,7 +132,79 @@ fn close(_lua: &Lua, _args: ()) -> LRes {
     Ok(()) 
 } 
 
+fn get_keys_down_luamm(lua: &Lua, _args: ()) -> LuaResult<LuaTable> {
+    let keys = lua.create_table()?;
+
+    for key in get_keys_down() {
+        if let Ok(key) = Key::try_from(&key) {
+            let _ = keys.push(key);
+        }
+    }
+
+    Ok(keys)
+}
+
+fn get_screen_as_rect(lua: &Lua, _args: ()) -> LuaResult<Rect> {
+    let screen = screen_size();
+    let rect = Rect::new(lua, &Vec2::new(0.0, 0.0), &Vec2::new(screen.0 as f64, screen.1 as f64))?;
+    Ok(rect)
+}
+
+pub trait TryDraw {
+    fn try_draw(&self, color: impl Deref<Target = Color>) -> LuaResult<()>;
+}
+
+impl TryDraw for LuaAnyUserData {
+    fn try_draw(&self, color: impl Deref<Target = Color>) -> LRes {
+        if let Ok(val) = self.borrow::<Rect>() {
+            let mq_color = MqColor::from_rgba(color.r, color.g, color.b, color.a);
+            let point = val.point.get_ref()?;
+            let size = val.size.get_ref()?;
+            draw_rectangle(point.x as f32, point.y as f32, size.x as f32, size.y as f32, mq_color);
+        } else {
+            return Err(LuaError::RuntimeError("Type is not drawable".to_string()));
+        }
+
+        Ok(())
+    }
+}
+
+fn draw(_lua: &Lua, args: (LuaAnyUserData, LuaUserDataRef<Color>)) -> LRes {
+    args.0.try_draw(args.1)?; 
+    Ok(())
+}
+
+fn draw_text_internal(_lua: &Lua, args: (LuaUserDataRef<Vec2>, u16, String, LuaUserDataRef<Color>)) -> LRes {
+    let loc = args.0;
+    let size = args.1;
+    let text = args.2;
+    let color = args.3;
+
+    draw_text(text.as_str(), loc.x as f32, loc.y as f32, size as f32, color.into_mq());
+    Ok(())
+}
+
+fn draw_text_center(_lua: &Lua, args: (LuaUserDataRef<Vec2>, u16, String, LuaUserDataRef<Color>)) -> LRes {
+    let mut loc = args.0.clone();
+    let size = args.1;
+    let text = args.2;
+    let color = args.3;
+
+    let center = get_text_center(text.as_str(), None, size, 1.0, 0.0);
+    let center = Vec2::new(center.x as f64, center.y as f64);
+
+    loc -= center;
+
+    draw_text(text.as_str(), loc.x as f32, loc.y as f32, size as f32, color.into_mq());
+    Ok(())
+}
+
 pub fn insert_library(lua: &Lua) {
+    let math = lua.globals().get::<LuaTable>("math").unwrap();
+    
+    let clamp = lua.create_function(|_, args: (f64, f64, f64)| Ok(LuaNumber::clamp(args.0, args.1, args.2))).unwrap();
+    math.set("clamp", clamp).unwrap();
+
     let lib = Library::new(lua);
     lib.register_function("sleep", sleep);
     lib.register_function("clear_screen", clear_screen);
@@ -255,7 +214,15 @@ pub fn insert_library(lua: &Lua) {
     lib.register_function("get_wasd", get_wasd_as_vec);
     lib.register_function("get_screen", get_screen);
     lib.register_function("close", close);
+    lib.register_function("get_keys_down", get_keys_down_luamm);
     lib.register_class::<Vec2>("Vec2");
     lib.register_class::<Key>("Key");
-    lib.inject("@luamm");
+    lib.register_class::<Rect>("Rect");
+    lib.register_class::<Edge>("Edge");
+    lib.register_function("draw", draw);
+    lib.register_function("get_arrows", get_arrow_as_vec);
+    lib.register_function("get_screen_rect", get_screen_as_rect);
+    lib.register_function("draw_text", draw_text_internal);
+    lib.register_function("draw_text_center", draw_text_center);
+    lib.inject_as_global("luamm");
 } 

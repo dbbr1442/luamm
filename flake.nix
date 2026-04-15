@@ -10,7 +10,7 @@
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
 
-    nativeBuildInputs = with pkgs; [ rustup luau-lsp ];
+    nativeBuildInputs = with pkgs; [ rustup luau-lsp lua52Packages.teal-language-server lua52Packages.luarocks lua52Packages.tl ];
     #buildInputs = with pkgs; [ pkg-config alsa-lib xorg.libX11 xorg.libXi libxkbcommon libGL ]; 
     buildInputs = with pkgs; [ pkg-config alsa-lib libX11 libXi libxkbcommon libGL ]; 
     

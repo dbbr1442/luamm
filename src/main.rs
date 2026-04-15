@@ -1,7 +1,7 @@
 use std::{fmt::Display, io::Read};
 
 use luamm::insert_library;
-use macroquad::{conf::Conf, window::next_frame};
+use macroquad::{conf::Conf, time::get_frame_time, window::next_frame};
 use mlua::prelude::*;
 
 fn conf() -> Conf {
@@ -14,7 +14,7 @@ fn conf() -> Conf {
 async fn main() {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
-        .open("./main.luau")
+        .open("./main.lua")
         .unwrap();
 
     let mut source = String::new();
@@ -23,7 +23,6 @@ async fn main() {
 
     let lua = Lua::new();
     insert_library(&lua);
-
 
     let chunk = lua.load(source);
     chunk.exec().unwrap_or_disp();
@@ -35,7 +34,12 @@ async fn main() {
 
     let process: LuaFunction = lua.globals().get("process").unwrap();
     loop {
-        process.call::<()>(()).disp_err();
+        let time = get_frame_time();
+        let fps = 1.0/time;
+        let time = 60.0/fps;
+        //println!("{}, {}", fps, time);
+
+        process.call::<()>(time).disp_err();
         if luamm::PROGRAM_SHOULD_EXIT.load(std::sync::atomic::Ordering::Relaxed) {
             break;
         }
