@@ -185,7 +185,7 @@ fn draw_text_internal(_lua: &Lua, args: (LuaUserDataRef<Vec2>, u16, String, LuaU
 }
 
 fn draw_text_center(_lua: &Lua, args: (LuaUserDataRef<Vec2>, u16, String, LuaUserDataRef<Color>)) -> LRes {
-    let mut loc = args.0.clone();
+    let mut loc = *args.0;
     let size = args.1;
     let text = args.2;
     let color = args.3;
@@ -199,30 +199,45 @@ fn draw_text_center(_lua: &Lua, args: (LuaUserDataRef<Vec2>, u16, String, LuaUse
     Ok(())
 }
 
+macro_rules! unwrap_all {
+    ( $( $x:expr; )+ ) => {
+        {
+            $(
+                $x.unwrap();
+            )*
+        }
+    };
+}
+
 pub fn insert_library(lua: &Lua) {
     let math = lua.globals().get::<LuaTable>("math").unwrap();
     
     let clamp = lua.create_function(|_, args: (f64, f64, f64)| Ok(LuaNumber::clamp(args.0, args.1, args.2))).unwrap();
     math.set("clamp", clamp).unwrap();
 
-    let lib = Library::new(lua);
-    lib.register_function("sleep", sleep);
-    lib.register_function("clear_screen", clear_screen);
-    lib.register_class::<Color>("Color"); 
-    lib.register_function("draw_rect", rect);
-    lib.register_function("is_key_down", is_key_down);
-    lib.register_function("get_wasd", get_wasd_as_vec);
-    lib.register_function("get_screen", get_screen);
-    lib.register_function("close", close);
-    lib.register_function("get_keys_down", get_keys_down_luamm);
-    lib.register_class::<Vec2>("Vec2");
-    lib.register_class::<Key>("Key");
-    lib.register_class::<Rect>("Rect");
-    lib.register_class::<Edge>("Edge");
-    lib.register_function("draw", draw);
-    lib.register_function("get_arrows", get_arrow_as_vec);
-    lib.register_function("get_screen_rect", get_screen_as_rect);
-    lib.register_function("draw_text", draw_text_internal);
-    lib.register_function("draw_text_center", draw_text_center);
-    lib.inject_as_global("luamm");
+    let lib = Library::new(lua).expect("Failed creating library table");
+
+    unwrap_all! {
+        lib.register_function("sleep", sleep);
+        lib.register_function("clear_screen", clear_screen);
+        lib.register_function("draw_rect", rect);
+        lib.register_function("is_key_down", is_key_down);
+        lib.register_function("get_wasd", get_wasd_as_vec);
+        lib.register_function("get_screen", get_screen);
+        lib.register_function("close", close);
+        lib.register_function("get_keys_down", get_keys_down_luamm);
+        lib.register_function("draw", draw);
+        lib.register_function("get_arrows", get_arrow_as_vec);
+        lib.register_function("get_screen_rect", get_screen_as_rect);
+        lib.register_function("draw_text", draw_text_internal);
+        lib.register_function("draw_text_center", draw_text_center);
+
+        lib.register_class::<Vec2>("Vec2");
+        lib.register_class::<Key>("Key");
+        lib.register_class::<Rect>("Rect");
+        lib.register_class::<Edge>("Edge");
+        lib.register_class::<Color>("Color"); 
+
+        lib.inject_as_global("luamm");
+    }
 } 

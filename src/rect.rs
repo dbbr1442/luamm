@@ -35,16 +35,11 @@ impl GetPrototype for Edge {
         proto.add_val("RIGHT", Self::Right);
         proto.add_val("TOP", Self::Top);
         proto.add_val("LEFT", Self::Left);
-            //let ptr = &raw const this.point as *mut c_void;
-            //Ok(Value::LightUserData(LightUserData(ptr)))
-            //let user_data = lua.create_userdata(data);
         proto.add_val("BOTTOM", Self::Bottom);
     }
 }
 
 pub struct Rect {
-    //pub point: Vec2,
-    //pub size: Vec2,
     pub point: TypedUserdata<Vec2>,
     pub size: TypedUserdata<Vec2>,
 }
@@ -53,7 +48,7 @@ impl Rect {
     pub fn new(lua: &Lua, point: impl Deref<Target = Vec2>, size: impl Deref<Target = Vec2>) -> Result<Self> {
         let point = TypedUserdata::from_struct(lua, *point)?;
         let size = TypedUserdata::from_struct(lua, *size)?;
-        Ok(Self { point: point, size: size, })
+        Ok(Self { point, size, })
     }
 
     fn get_edge(&self, edge: impl Deref<Target = Edge>) -> Result<f64> {

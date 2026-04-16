@@ -48,12 +48,6 @@ impl UserData for Vec2 {
     }
 }
 
-//impl IntoLua for Vec2 {
-//    fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
-//            Ok(Value::LightUserData(LightUserData(&raw mut self)))
-//    }
-//}
-
 impl Vec2 {
     pub const ZERO: Self = Self { x: 0.0, y: 0.0 };
     pub const UP: Self = Self { x: 0.0, y: -1.0 };

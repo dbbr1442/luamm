@@ -32,8 +32,8 @@ impl<T: 'static> TypedUserdata<T> {
     }
 
     pub fn clone_shallow(&self) -> Self {
-        let new = Self::from_any(self.inner.clone()).unwrap();
-        new
+        
+        Self::from_any(self.inner.clone()).unwrap()
     }
 }
 
@@ -43,8 +43,8 @@ pub trait ShallowClone {
 
 impl<T: 'static> ShallowClone for TypedUserdata<T> {
     fn shallow_clone(&self, _lua: &Lua) -> Self {
-        let new = Self::from_any(self.inner.clone()).unwrap();
-        new
+        
+        Self::from_any(self.inner.clone()).unwrap()
     }
 }
 
@@ -71,12 +71,12 @@ impl<T: 'static> FromLua for TypedUserdata<T> {
         if let Some(val) = value.as_userdata() {
             if val.is::<T>() {
                 let typed = Self::from_any(val.clone()).unwrap();
-                return Ok(typed);
+                Ok(typed)
             } else {
-                return Err(mlua::Error::UserDataTypeMismatch);
+                Err(mlua::Error::UserDataTypeMismatch)
             }
         } else {
-            return Err(mlua::Error::UserDataTypeMismatch);
+            Err(mlua::Error::UserDataTypeMismatch)
         }
     }
 }

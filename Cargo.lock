@@ -219,6 +219,7 @@ checksum = "b5b646652bf6661599e1da8901b3b9522896f01e736bad5f723fe7a3a27f899d"
 [[package]]
 name = "lli"
 version = "0.1.0"
+source = "git+https://github.com/dbbr1442/lli.git#65d3d6c07cde4090581610d8e4febd67d9e141e4"
 dependencies = [
  "mlua",
 ]

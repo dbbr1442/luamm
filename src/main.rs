@@ -12,10 +12,22 @@ fn conf() -> Conf {
 
 #[macroquad::main(conf)]
 async fn main() {
-    let mut file = std::fs::OpenOptions::new()
+    let file = std::env::args().nth(1).unwrap_or_else(|| {
+        println!("No file path provided. Using ./main.lua");
+        "./main.lua".to_string()
+    });
+
+    let file = std::fs::OpenOptions::new()
         .read(true)
-        .open("./main.lua")
-        .unwrap();
+        .open(file);
+
+    let mut file = match file {
+        Ok(val) => val,
+        Err(e) => {
+            println!("{}", e);
+            return;
+        }
+    };
 
     let mut source = String::new();
     file.read_to_string(&mut source).unwrap();
