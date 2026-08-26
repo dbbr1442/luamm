@@ -68,6 +68,10 @@ function process(delta)
 		return
 	end
 
+	if luamm.is_key_down(luamm.Key.ESCAPE) then
+		return 0
+	end
+
 	local wasd = luamm.get_wasd()
 	local arrows = luamm.get_arrows()
 

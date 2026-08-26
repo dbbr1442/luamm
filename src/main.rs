@@ -51,8 +51,8 @@ async fn main() {
         let time = 60.0/fps;
         //println!("{}, {}", fps, time);
 
-        process.call::<()>(time).disp_err();
-        if luamm::PROGRAM_SHOULD_EXIT.load(std::sync::atomic::Ordering::Relaxed) {
+        let result = process.call::<LuaValue>(time).unwrap_or_disp();
+        if !result.is_nil() {
             break;
         }
 

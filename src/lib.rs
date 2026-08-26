@@ -125,13 +125,6 @@ fn get_screen(_lua: &Lua, _args: ()) -> LuaResult<Vec2> {
     Ok(Vec2 { x: vec.0 as f64, y: vec.1 as f64 })
 }
 
-pub static PROGRAM_SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
-
-fn close(_lua: &Lua, _args: ()) -> LRes {
-    PROGRAM_SHOULD_EXIT.store(true, std::sync::atomic::Ordering::Release);
-    Ok(()) 
-} 
-
 fn get_keys_down_luamm(lua: &Lua, _args: ()) -> LuaResult<LuaTable> {
     let keys = lua.create_table()?;
 
@@ -224,7 +217,6 @@ pub fn insert_library(lua: &Lua) {
         lib.register_function("is_key_down", is_key_down);
         lib.register_function("get_wasd", get_wasd_as_vec);
         lib.register_function("get_screen", get_screen);
-        lib.register_function("close", close);
         lib.register_function("get_keys_down", get_keys_down_luamm);
         lib.register_function("draw", draw);
         lib.register_function("get_arrows", get_arrow_as_vec);
